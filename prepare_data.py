@@ -32,16 +32,18 @@ def fetch_currencies_data():
 
 def clean_countries_data(data):
     data_clean = []
-    for country in data:
-        entry = {**country}
-        # Check if 'currencies' key exists and is not empty
-        if 'currencies' in country and country['currencies']:
-            entry['currency'] = country['currencies'][0]['code']
-            del entry['currencies'] # Remove the 'currencies' key from the entry
-        else:
-            entry['currency'] = None # Or some other appropriate value indicating no currency data
-        data_clean.append(entry)
-    return data_clean
+    if data:
+        for country in data:
+            entry = {**country}
+            # Check if 'currencies' key exists and is not empty
+            if 'currencies' in country and country['currencies']:
+                entry['currency'] = country['currencies'][0]['code']
+                del entry['currencies'] # Remove the 'currencies' key from the entry
+            else:
+                entry['currency'] = None # Or some other appropriate value indicating no currency data
+            data_clean.append(entry)
+        return data_clean
+    else: return None
 
 def currencies_df(currency_data):
     if currency_data:  # Check if currency_data is not None
@@ -61,17 +63,20 @@ def countries_df(data_clean):
 
 def main():
     countries_data = fetch_countries_data()
-    if countries_data:
+    currency_data = fetch_currencies_data()
+
+    if countries_data and currency_data:
         data_clean = clean_countries_data(countries_data)
         countries_dataframe = countries_df(data_clean)
         print("Countries DataFrame:")
         print(countries_dataframe.head())
 
-    currency_data = fetch_currencies_data()
-    if currency_data:
         currency_dataframe = currencies_df(currency_data)
         print("Currencies DataFrame:")
         print(currency_dataframe.head())
+    
+    else: 
+        return {"COUNTRIES_URL": countries_data, "CURRENCIES_URL": currency_data}
     
     merged_df = pd.merge(countries_dataframe, currency_dataframe, on='currency', how='left')
     merged_df['estimated_gdp'] = merged_df['population'] * random.randint(1000, 2000) / merged_df['rate'] 

@@ -1,16 +1,19 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 import pandas as pd
 from create_db import main, create_connection
 from datetime import datetime, timezone
+from PIL import Image, ImageDraw, ImageFont
+import io
 app = Flask(__name__)
 
-last_refresh = None
+# last_refresh = None
 
-@app.route('/countries/refresh', methods=['POST'])
+@app.route('/countries/refresh', methods=['POST']) 
 def populate_db_route():
+    global last_refresh 
     try:
-        last_refresh = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         main()  # Call the main function from create_db.py to populate the database
+        last_refresh = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         return jsonify({"message": f"Database populated successfully at {last_refresh}"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -18,9 +21,21 @@ def populate_db_route():
 @app.route('/countries', methods=['GET'])
 def get_countries():
     try:
+        filter_errors = {}
         # Get query parameters
         filters = request.args.to_dict()
+        print(f'filters ------ {filters}')
         
+        if 'name' not in filters: 
+            filter_errors['name'] = 'is required'
+        if 'population' not in filters:             
+            filter_errors['population'] = 'is required'
+        if 'currency_code' not in filters: 
+            filter_errors['currency_code'] = 'is required'
+  
+        if filter_errors:
+            return jsonify({"errors": "Validation failed", "details": filter_errors}), 400
+
         # Fetch countries data from the database
         connection = create_connection()
         if connection is not None:
@@ -129,36 +144,83 @@ def get_status():
 
 @app.route('/countries/image')
 def get_country_image():
-    """
-    Returns all contents of the entire database.
-    The fields are:
-        id — auto-generated
-        name — required
-        capital — optional
-        region — optional
-        population — required
-        currency_code — required
-        exchange_rate — required
-        estimated_gdp — computed from population × random(1000–2000) ÷ exchange_rate
-        flag_url — optional
-        last_refreshed_at — auto timestamp
-    """
-    try:
+    try:      
+        # Create database connection
         connection = create_connection()
         if connection is not None:
             cursor = connection.cursor()
             cursor.execute("USE countries_db")
-            cursor.execute("SELECT * FROM countries")
-            rows = cursor.fetchall()
-            columns = [column[0] for column in cursor.description]
-            countries_df = pd.DataFrame(rows, columns=columns)
-            connection.close()
+            
+            # Get total number of countries
+            cursor.execute("SELECT COUNT(*) FROM countries")
+            total_countries = cursor.fetchone()[0]
+            
+            # Get top 5 countries by estimated GDP (population * rate)
+            cursor.execute("""
+                SELECT name, population * rate as estimated_gdp 
+                FROM countries 
+                ORDER BY estimated_gdp DESC 
+                LIMIT 5
+            """)
+            top_gdp_countries = cursor.fetchall()
+            
+            # Get timestamp of last refresh
+            cursor.execute("""
+                SELECT last_refreshed_at FROM countries LIMIT 1
+            """)
+            last_refresh_ts = cursor.fetchone()[0]
+            # Create a new image with a white background
+            width = 800
+            height = 600
+            image = Image.new('RGB', (width, height), 'white')
+            draw = ImageDraw.Draw(image)
+            
+            # Try to use Arial font, fallback to default if not available
+            try:
+                font = ImageFont.truetype("arial.ttf", 24)
+                small_font = ImageFont.truetype("arial.ttf", 20)
+            except:
+                font = ImageFont.load_default()
+                small_font = ImageFont.load_default()
+            
+            # Draw title
+            draw.text((50, 50), "Countries Database Statistics", fill='black', font=font)
+            
+            # Draw total countries
+            draw.text((50, 120), f"Total Number of Countries: {total_countries}", fill='black', font=font)
+            
+            # Draw timestamp
+            draw.text((50, 170), f"Last Database Refresh: {last_refresh_ts}", fill='black', font=font)
+            
+            # Draw top 5 GDP countries
+            draw.text((50, 240), "Top 5 Countries by Estimated GDP:", fill='black', font=font)
+            y = 290
+            for i, (country, gdp) in enumerate(top_gdp_countries, 1):
+                gdp_formatted = "{:,.2f}".format(gdp)
+                draw.text((70, y), f"{i}. {country}: ${gdp_formatted}", fill='black', font=small_font)
+                y += 40
 
-            return jsonify(countries_df.to_dict(orient='records')), 200
+            # Save image to file in cache directory
+            image_path = 'cache/summary.png'
+            image.save(image_path, 'PNG')
+            
+            img_io = io.BytesIO()
+            image.save(img_io, 'PNG')
+            img_io.seek(0)
+            
+            connection.close()
+            
+            return send_file(
+                img_io,
+                mimetype='image/png',
+                as_attachment=True,
+                download_name='summary.png'
+            )
         else:
             return jsonify({"error": "Failed to establish database connection"}), 500
+            
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Summary image not found"}), 500
 
 
 if __name__ == '__main__':

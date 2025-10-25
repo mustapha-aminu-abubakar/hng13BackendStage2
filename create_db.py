@@ -1,7 +1,7 @@
 import pandas as pd
 import mysql.connector
 from mysql.connector import Error
-from prepare_data import data_main
+from prepare_data import main as data_main
 
 def create_connection():
     connection = None
@@ -32,7 +32,7 @@ def create_database(connection):
             region VARCHAR(100),
             population BIGINT,
             flag VARCHAR(255),
-            currency VARCHAR(10),
+            currency_code VARCHAR(10),
             rate DECIMAL(20,10),
             estimated_gdp DECIMAL(30,10),
             last_refreshed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -75,7 +75,7 @@ def populate_database(connection, df):
         
         # Prepare the insert query
         insert_query = """
-        INSERT INTO countries (name, capital, region, population, flag, currency, rate, estimated_gdp)
+        INSERT INTO countries (name, capital, region, population, flag, currency_code, rate, estimated_gdp)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         
