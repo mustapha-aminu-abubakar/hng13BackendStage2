@@ -2,15 +2,22 @@ import pandas as pd
 import mysql.connector
 from mysql.connector import Error
 from prepare_data import main as data_main
+import os
+from dotenv import load_dotenv
 
 def create_connection():
     connection = None
     try:
+        load_dotenv()
+        host = os.getenv("MYSQLHOST")
+        user = os.getenv("MYSQLUSER")
+        password = os.getenv("MYSQLPASSWORD")
+        port = int(os.getenv("MYSQLPORT"))
         connection = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='1234',
-            port=3307
+            host=host,
+            user=user,
+            password=password,
+            port=port
         )
         print("Connection to MySQL DB successful")
     except Error as e:

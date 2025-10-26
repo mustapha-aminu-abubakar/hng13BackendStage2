@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 app = Flask(__name__)
 
-# last_refresh = None
+last_refresh = None
 
 @app.route('/countries/refresh', methods=['POST']) 
 def populate_db_route():
@@ -94,11 +94,13 @@ def get_country_by_name(name):
             cursor.execute("USE countries_db")
             cursor.execute("SELECT * FROM countries WHERE name = %s", (name,))
             row = cursor.fetchone()
-            columns = [column[0] for column in cursor.description]
-            country_df = pd.DataFrame([row], columns=columns)
             connection.close()
-
-            return jsonify(country_df.to_dict(orient='records')), 200
+            if row:
+                columns = [column[0] for column in cursor.description]
+                country_df = pd.DataFrame([row], columns=columns)
+                return jsonify(country_df.to_dict(orient='records')), 200
+            else:
+                return jsonify({"error": "Country not found"}), 404
         else:
             return jsonify({"error": "Failed to establish database connection"}), 500
     except Exception as e:
@@ -127,6 +129,7 @@ def get_status():
     """
     Get the number of rows in the countries table and the last refresh timestamp.
     """
+    global last_refresh
     try:
         connection = create_connection()
         if connection is not None:
