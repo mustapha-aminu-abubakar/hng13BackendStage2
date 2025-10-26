@@ -178,11 +178,16 @@ def delete_country(name):
         if connection is not None:
             cursor = connection.cursor()
             cursor.execute("USE countries_db")
-            cursor.execute("DELETE FROM countries WHERE name = %s", (name,))
-            connection.commit()
-            connection.close()
-
-            return jsonify({"message": "Country deleted successfully"}), 200
+            cursor.execute("SELECT * FROM countries WHERE name = %s", (name,))
+            row = cursor.fetchone()
+            if row:
+                cursor.execute("DELETE FROM countries WHERE name = %s", (name,))
+                connection.commit()
+                connection.close()
+                return jsonify({"message": "Country deleted successfully"}), 200
+            else:
+                connection.close()
+                return jsonify({"error": "Country not found"}), 404
         else:
             return jsonify({"error": "Failed to establish database connection"}), 500
     except Exception as e:
