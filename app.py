@@ -224,7 +224,10 @@ def get_country_image():
             
     except Exception as e:
         return jsonify({"error": "Summary image not found"}), 500
-
+    
+@app.route('/test')
+def test():
+    return jsonify({'message': 'Flask app connect successful'}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
