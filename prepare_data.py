@@ -65,23 +65,20 @@ def main():
     countries_data = fetch_countries_data()
     currency_data = fetch_currencies_data()
 
-    if countries_data and currency_data:
-        data_clean = clean_countries_data(countries_data)
-        countries_dataframe = countries_df(data_clean)
-        print("Countries DataFrame:")
-        print(countries_dataframe.head())
+    data_clean = clean_countries_data(countries_data)
+    countries_dataframe = countries_df(data_clean)
+    countries_dataframe = countries_dataframe.dropna(subset=['currency'])
+    print("Countries DataFrame:")
+    print(countries_dataframe.head())
 
-        currency_dataframe = currencies_df(currency_data)
-        print("Currencies DataFrame:")
-        print(currency_dataframe.head())
-    
-    else: 
-        return {"COUNTRIES_URL": countries_data, "CURRENCIES_URL": currency_data}
-    
+    currency_dataframe = currencies_df(currency_data)
+    print("Currencies DataFrame:")
+    print(currency_dataframe.head())
+
     merged_df = pd.merge(countries_dataframe, currency_dataframe, on='currency', how='left')
     merged_df['estimated_gdp'] = merged_df['population'] * random.randint(1000, 2000) / merged_df['rate'] 
-    print(merged_df.head())
-    
+    # print(merged_df.info())
+
     return merged_df
 
 if __name__ == "__main__":
