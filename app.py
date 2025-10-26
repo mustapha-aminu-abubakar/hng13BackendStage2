@@ -66,7 +66,8 @@ def save_img():
             y += 40
 
         # Save image to file in cache directory
-        image_path = "./cache/summary.png"
+        os.makedirs('cache', exist_ok=True)
+        image_path = "cache/summary.png"
         image.save(image_path, 'PNG')
 
             
