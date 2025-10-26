@@ -11,8 +11,7 @@ def fetch_countries_data(url=COUNTRIES_URL):
     # Check if the request was successful
     if response.status_code == 200:
         data = response.json()
-        print("Data retrieved successfully.")
-        print(data)
+        print("Country data retrieved successfully.")
     else:
         print(f"Error retrieving data: {response.status_code}")
         data = None # Set data to None in case of an error
@@ -68,16 +67,15 @@ def main():
     data_clean = clean_countries_data(countries_data)
     countries_dataframe = countries_df(data_clean)
     countries_dataframe = countries_dataframe.dropna(subset=['currency'])
-    print("Countries DataFrame:")
-    print(countries_dataframe.head())
+    print(f"Countries DataFrame: {len(countries_dataframe)} entries")
 
     currency_dataframe = currencies_df(currency_data)
-    print("Currencies DataFrame:")
-    print(currency_dataframe.head())
+    print(f"Currencies DataFrame: {len(currency_dataframe)} entries")
 
     merged_df = pd.merge(countries_dataframe, currency_dataframe, on='currency', how='left')
     merged_df['estimated_gdp'] = merged_df['population'] * random.randint(1000, 2000) / merged_df['rate'] 
-    # print(merged_df.info())
+    print(f"Merged DataFrame: {len(merged_df)} entries, {merged_df.shape} columns")
+    # merged_df.to_csv('merged_df.csv')
 
     return merged_df
 

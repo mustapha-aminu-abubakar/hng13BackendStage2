@@ -58,6 +58,11 @@ def populate_database(connection, df):
         # First, clear existing data
         cursor.execute("TRUNCATE TABLE countries")
         
+        # Convert specific columns to appropriate types
+        df['population'] = df['population'].astype('Int64')
+        df['rate'] = pd.to_numeric(df['rate'], errors='coerce')
+        df['estimated_gdp'] = pd.to_numeric(df['estimated_gdp'], errors='coerce')
+        
         # More thorough data cleaning
         df = df.assign(
             name=df['name'].fillna('Unknown'),
@@ -70,11 +75,6 @@ def populate_database(connection, df):
             estimated_gdp=df['estimated_gdp'].fillna(0.0)
         )
         
-        # Convert specific columns to appropriate types
-        df['population'] = df['population'].astype('Int64')
-        df['rate'] = pd.to_numeric(df['rate'], errors='coerce')
-        df['estimated_gdp'] = pd.to_numeric(df['estimated_gdp'], errors='coerce')
-
         # Print debug information
         print("DataFrame columns:", df.columns.tolist())
         print("DataFrame dtypes:", df.dtypes)
