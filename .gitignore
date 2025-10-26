@@ -1,10 +1,84 @@
-.venv
-/.venv/*
-.env
-/.env
-./.env
-!.env
-# Environment files
+# =============================
+# Python & Flask Project Ignore
+# =============================
+
+# Environment
 .env
 .env.local
 .env.*.local
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs
+*.log
+*.out
+*.err
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+test-results/
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Database / local storage
+*.sqlite3
+*.db
+
+# Temporary files
+*.tmp
+*.bak
+*.pid
+
+# PyInstaller
+*.spec
+
+# Railway-specific
+.railway/
+
+# =============================
+# End of file
+# =============================
