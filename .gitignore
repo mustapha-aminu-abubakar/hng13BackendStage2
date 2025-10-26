@@ -4,3 +4,7 @@
 /.env
 ./.env
 !.env
+# Environment files
+.env
+.env.local
+.env.*.local
