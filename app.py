@@ -4,15 +4,78 @@ from create_db import main, create_connection
 from datetime import datetime, timezone
 from PIL import Image, ImageDraw, ImageFont
 import io
+import os
 app = Flask(__name__)
 
 last_refresh = None
 
+def save_img():
+    # Create database connection
+    connection = create_connection()
+    if connection is not None:
+        cursor = connection.cursor()
+        cursor.execute("USE countries_db")
+        
+        # Get total number of countries
+        cursor.execute("SELECT COUNT(*) FROM countries")
+        total_countries = cursor.fetchone()[0]
+        
+        # Get top 5 countries by estimated GDP (population * rate)
+        cursor.execute("""
+            SELECT name, population * rate as estimated_gdp 
+            FROM countries 
+            ORDER BY estimated_gdp DESC 
+            LIMIT 5
+        """)
+        top_gdp_countries = cursor.fetchall()
+        
+        # Get timestamp of last refresh
+        cursor.execute("""
+            SELECT last_refreshed_at FROM countries LIMIT 1
+        """)
+        last_refresh_ts = cursor.fetchone()[0]
+        # Create a new image with a white background
+        width = 800
+        height = 600
+        image = Image.new('RGB', (width, height), 'white')
+        draw = ImageDraw.Draw(image)
+        
+        # Try to use Arial font, fallback to default if not available
+        try:
+            font = ImageFont.truetype("arial.ttf", 24)
+            small_font = ImageFont.truetype("arial.ttf", 20)
+        except:
+            font = ImageFont.load_default()
+            small_font = ImageFont.load_default()
+        
+        # Draw title
+        draw.text((50, 50), "Countries Database Statistics", fill='black', font=font)
+        
+        # Draw total countries
+        draw.text((50, 120), f"Total Number of Countries: {total_countries}", fill='black', font=font)
+        
+        # Draw timestamp
+        draw.text((50, 170), f"Last Database Refresh: {last_refresh_ts}", fill='black', font=font)
+        
+        # Draw top 5 GDP countries
+        draw.text((50, 240), "Top 5 Countries by Estimated GDP:", fill='black', font=font)
+        y = 290
+        for i, (country, gdp) in enumerate(top_gdp_countries, 1):
+            gdp_formatted = "{:,.2f}".format(gdp)
+            draw.text((70, y), f"{i}. {country}: ${gdp_formatted}", fill='black', font=small_font)
+            y += 40
+
+        # Save image to file in cache directory
+        image_path = os.path.join(os.path.dirname(__file__), 'cache', 'summary.png')
+        image.save(image_path, 'PNG')
+
+            
 @app.route('/countries/refresh', methods=['POST']) 
 def populate_db_route():
     global last_refresh 
     try:
         main()  # Call the main function from create_db.py to populate the database
+        save_img()
         last_refresh = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         return jsonify({"message": f"Database populated successfully at {last_refresh}"}), 200
     except Exception as e:
@@ -147,87 +210,25 @@ def get_status():
 
 @app.route('/countries/image')
 def get_country_image():
-    try:      
-        # Create database connection
-        connection = create_connection()
-        if connection is not None:
-            cursor = connection.cursor()
-            cursor.execute("USE countries_db")
-            
-            # Get total number of countries
-            cursor.execute("SELECT COUNT(*) FROM countries")
-            total_countries = cursor.fetchone()[0]
-            
-            # Get top 5 countries by estimated GDP (population * rate)
-            cursor.execute("""
-                SELECT name, population * rate as estimated_gdp 
-                FROM countries 
-                ORDER BY estimated_gdp DESC 
-                LIMIT 5
-            """)
-            top_gdp_countries = cursor.fetchall()
-            
-            # Get timestamp of last refresh
-            cursor.execute("""
-                SELECT last_refreshed_at FROM countries LIMIT 1
-            """)
-            last_refresh_ts = cursor.fetchone()[0]
-            # Create a new image with a white background
-            width = 800
-            height = 600
-            image = Image.new('RGB', (width, height), 'white')
-            draw = ImageDraw.Draw(image)
-            
-            # Try to use Arial font, fallback to default if not available
-            try:
-                font = ImageFont.truetype("arial.ttf", 24)
-                small_font = ImageFont.truetype("arial.ttf", 20)
-            except:
-                font = ImageFont.load_default()
-                small_font = ImageFont.load_default()
-            
-            # Draw title
-            draw.text((50, 50), "Countries Database Statistics", fill='black', font=font)
-            
-            # Draw total countries
-            draw.text((50, 120), f"Total Number of Countries: {total_countries}", fill='black', font=font)
-            
-            # Draw timestamp
-            draw.text((50, 170), f"Last Database Refresh: {last_refresh_ts}", fill='black', font=font)
-            
-            # Draw top 5 GDP countries
-            draw.text((50, 240), "Top 5 Countries by Estimated GDP:", fill='black', font=font)
-            y = 290
-            for i, (country, gdp) in enumerate(top_gdp_countries, 1):
-                gdp_formatted = "{:,.2f}".format(gdp)
-                draw.text((70, y), f"{i}. {country}: ${gdp_formatted}", fill='black', font=small_font)
-                y += 40
+    try:
+        # Serve the pre-generated summary image from cache
+        image_path = os.path.join(os.path.dirname(__file__), 'cache', 'summary.png')
+        print(image_path)
+        if not os.path.exists(image_path):
+            return jsonify({"error": "Summary image not found"}), 404
 
-            # Save image to file in cache directory
-            image_path = 'cache/summary.png'
-            image.save(image_path, 'PNG')
-            
-            img_io = io.BytesIO()
-            image.save(img_io, 'PNG')
-            img_io.seek(0)
-            
-            connection.close()
-            
-            return send_file(
-                img_io,
-                mimetype='image/png',
-                as_attachment=True,
-                download_name='summary.png'
-            )
-        else:
-            return jsonify({"error": "Failed to establish database connection"}), 500
-            
+        return send_file(
+            image_path,
+            mimetype='image/png',
+            as_attachment=False,
+            download_name='summary.png'
+        )
     except Exception as e:
-        return jsonify({"error": "Summary image not found"}), 500
-    
-@app.route('/test')
-def test():
-    return jsonify({'message': 'Flask app connect successful'}), 200
+        return jsonify({"error": str(e)}), 500
+
+# @app.route('/test', methods=['GET'])
+# def test():
+#     return jsonify({'message': 'Flask app connect successful'}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

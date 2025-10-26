@@ -66,7 +66,6 @@ def main():
 
     data_clean = clean_countries_data(countries_data)
     countries_dataframe = countries_df(data_clean)
-    countries_dataframe = countries_dataframe.dropna(subset=['currency'])
     print(f"Countries DataFrame: {len(countries_dataframe)} entries")
 
     currency_dataframe = currencies_df(currency_data)
