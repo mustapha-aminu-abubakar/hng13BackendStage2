@@ -212,7 +212,7 @@ def get_status():
 def get_country_image():
     try:
         # Serve the pre-generated summary image from cache
-        image_path = "./cache/summary.png
+        image_path = "./cache/summary.png"
         print(image_path)
         if not os.path.exists(image_path):
             return jsonify({"error": "Summary image not found"}), 404
